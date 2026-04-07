@@ -1,0 +1,8 @@
+{
+  "name": "card-game-compilation-web",
+  "private": true,
+  "scripts": {
+    "setup": "npm --prefix backend install",
+    "start": "npm --prefix backend start"
+  }
+}

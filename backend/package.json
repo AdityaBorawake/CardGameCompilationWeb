@@ -1,0 +1,14 @@
+{
+  "name": "cardgamecompilation",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Host-authoritative browser card game platform. Run `npm start` to serve all files + Socket.IO backend on port 8080.",
+  "scripts": {
+    "start": "node server.js",
+    "dev":   "node --watch server.js"
+  },
+  "dependencies": {
+    "socket.io": "^4.8.1"
+  }
+}

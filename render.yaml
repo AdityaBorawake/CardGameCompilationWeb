@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: card-game-compilation-web
+    runtime: node
+    buildCommand: npm run setup
+    startCommand: npm start

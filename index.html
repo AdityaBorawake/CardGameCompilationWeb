@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Card Game Compilation - Play Sevens, Five-Three-Two and Beggar-Moneylender Free</title>
+  <meta name="description" content="Play three classic card games free in your browser. Sevens, Five-Three-Two trick-taking, and Beggar-Moneylender pile capture. No download, no login required."/>
+  <meta name="keywords" content="card games online, sevens card game, five three two, beggar moneylender, free browser card games, trick taking game, family card games"/>
+  <meta property="og:type" content="website"/>
+  <meta property="og:title" content="Card Game Compilation - Free Browser Card Games"/>
+  <meta property="og:description" content="Three classic card games, no install required. Play Sevens, Five-Three-Two and Beggar-Moneylender."/>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css"/>
+</head>
+<body class="landing-body">
+<div class="site-shell">
+
+  <header class="hero-card">
+    <nav class="topbar">
+      <a class="brand" href="/"><span class="brand-mark">CG</span><h1>Card Game Compilation</h1></a>
+      <a class="hero-cta-small" href="#games">Play now</a>
+    </nav>
+    <div class="hero-grid">
+      <div class="hero-copy">
+        <p class="eyebrow">Free &middot; No login &middot; Browser-only</p>
+        <h2>Three classic card games, ready to play.</h2>
+        <p class="hero-text">Sevens, Five-Three-Two, and Beggar-Moneylender all run entirely in your browser. Solo vs CPU, hotseat with friends, or room mode across tabs.</p>
+        <a class="hero-cta" href="#games">Choose a game</a>
+      </div>
+      <div class="hero-visual" aria-hidden="true">
+        <div class="float-card fc-1"><span class="fc-rank">7</span><span class="fc-suit">&#9824;</span></div>
+        <div class="float-card fc-2"><span class="fc-rank red">K</span><span class="fc-suit red">&#9829;</span></div>
+        <div class="float-card fc-3"><span class="fc-rank">A</span><span class="fc-suit">&#9827;</span></div>
+        <div class="float-card fc-4"><span class="fc-rank red">J</span><span class="fc-suit red">&#9830;</span></div>
+      </div>
+    </div>
+    <div class="feature-strip">
+      <div class="feat"><span>&#128683;</span> No download</div>
+      <div class="feat"><span>&#128274;</span> No login</div>
+      <div class="feat"><span>&#129302;</span> CPU opponents</div>
+      <div class="feat"><span>&#129306;</span> Hotseat + room modes</div>
+    </div>
+  </header>
+
+  <section class="section" id="games">
+    <div class="section-head">
+      <p class="eyebrow">Pick a game</p>
+      <h2>Jump straight in.</h2>
+    </div>
+    <div class="game-grid">
+      <a class="game-card" href="./lobby.html?game=sevens">
+        <div class="gc-top"><span class="pill">3 players</span><span class="gc-icon">&#127183;</span></div>
+        <h3>Sevens</h3>
+        <p>Build each suit lane outward from the sevens. First to empty their hand wins.</p>
+        <div class="gc-footer"><span class="gc-tag">Board building</span><span class="card-arrow">&#8594;</span></div>
+      </a>
+      <a class="game-card game-card-featured" href="./lobby.html?game=ftt">
+        <div class="gc-featured-badge">Most popular</div>
+        <div class="gc-top"><span class="pill pill-gold">3 players</span><span class="gc-icon">&#127919;</span></div>
+        <h3>Five-Three-Two</h3>
+        <p>Trick-taking with rotating quotas. Hit your target exactly or be the closest.</p>
+        <div class="gc-footer"><span class="gc-tag">Trick taking</span><span class="card-arrow">&#8594;</span></div>
+      </a>
+      <a class="game-card" href="./lobby.html?game=beggar">
+        <div class="gc-top"><span class="pill">2 players</span><span class="gc-icon">&#128176;</span></div>
+        <h3>Beggar-Moneylender</h3>
+        <p>Flip cards into the pile. Match a rank already there and capture everything.</p>
+        <div class="gc-footer"><span class="gc-tag">Pile capture</span><span class="card-arrow">&#8594;</span></div>
+      </a>
+    </div>
+  </section>
+
+  <section class="rules-section" id="rules">
+    <div class="section-head">
+      <p class="eyebrow">Rules</p>
+      <h2>How to play</h2>
+    </div>
+    <div class="rules-tabs" role="tablist">
+      <button class="rtab active" role="tab" aria-selected="true" data-rules="sevens">Sevens</button>
+      <button class="rtab" role="tab" aria-selected="false" data-rules="ftt">Five-Three-Two</button>
+      <button class="rtab" role="tab" aria-selected="false" data-rules="beggar">Beggar-Moneylender</button>
+    </div>
+    <div class="rules-panel active" id="rules-sevens" role="tabpanel">
+      <h4>Sevens</h4>
+      <p>3-player board-building race, full 52-card deck. Holder of 7&hearts; goes first and must open with it.</p>
+      <ul class="rules-list">
+        <li>Place one card per turn — rank must be exactly one step beyond the lane's current edge.</li>
+        <li>Open a lane with its 7, then extend up toward A or down toward 2.</li>
+        <li>No legal card? Turn is skipped automatically.</li>
+        <li>First player to empty their hand wins.</li>
+      </ul>
+    </div>
+    <div class="rules-panel" id="rules-ftt" role="tabpanel">
+      <h4>Five-Three-Two</h4>
+      <p>3-player trick-taking, 30-card deck (6 to A, all suits, 10 cards each). The quota-5 player picks trump each round.</p>
+      <ul class="rules-list">
+        <li>Rotating quotas: 5 tricks, 3 tricks, 2 tricks — one per player per round.</li>
+        <li>The quota-5 player sees their first 5 cards and names trump — or reveals 2 extra cards and picks from those suits.</li>
+        <li>Follow the led suit if possible; otherwise play any card.</li>
+        <li>Highest trump wins the trick. No trump? Highest of the led suit wins.</li>
+        <li>Hit quota exactly to score 1 point. No one exact? Closest scores instead.</li>
+        <li>First to 3 points wins the match.</li>
+      </ul>
+    </div>
+    <div class="rules-panel" id="rules-beggar" role="tabpanel">
+      <h4>Beggar-Moneylender</h4>
+      <p>Fast 2-player pile-capture, full 52 cards. Each player: 4-card hand + 22-card reserve.</p>
+      <ul class="rules-list">
+        <li>Flip the top card of your hand onto the central pile.</li>
+        <li>If the rank matches any card already in the pile, capture the whole pile into your reserve.</li>
+        <li>Hand refills to 4 after each flip.</li>
+        <li>Empty hand and reserve = eliminated. Last one with cards wins.</li>
+      </ul>
+    </div>
+  </section>
+
+</div>
+<script>
+document.querySelectorAll('.rtab').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    document.querySelectorAll('.rtab').forEach(function(b){b.classList.remove('active');b.setAttribute('aria-selected','false');});
+    document.querySelectorAll('.rules-panel').forEach(function(p){p.classList.remove('active');});
+    btn.classList.add('active');
+    btn.setAttribute('aria-selected','true');
+    document.getElementById('rules-'+btn.dataset.rules).classList.add('active');
+  });
+});
+</script>
+</body>
+</html>

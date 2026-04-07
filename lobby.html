@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Game Setup — Card Game Compilation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css"/>
+  <style>
+    /* ══════════════════════════════════════════
+       LOBBY PAGE
+       Full-screen dark setup screen shown before
+       entering any game.
+       ══════════════════════════════════════════ */
+
+    body { margin:0; font-family:'DM Sans',sans-serif; }
+
+    .lobby-page {
+      min-height: 100dvh;
+      display: flex; flex-direction: column;
+      background:
+        radial-gradient(ellipse 70% 50% at 50% 60%, rgba(55,68,148,0.22), transparent 55%),
+        linear-gradient(170deg, #0f1228 0%, #181c3a 100%);
+      color: #f2e8d6;
+    }
+
+    /* ── Top bar ── */
+    .lobby-topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 20px; border-bottom: 1px solid rgba(255,255,255,0.07);
+      background: rgba(8,10,26,0.55); flex-shrink: 0;
+    }
+    .lobby-brand {
+      display: flex; align-items: center; gap: 12px;
+      color: #f0d3a0; text-decoration: none;
+    }
+    .lobby-brand-icon {
+      position: relative; width: 44px; height: 32px;
+    }
+    .lbi { position: absolute; width: 20px; height: 28px; border-radius: 5px;
+      border: 1.5px solid rgba(255,255,255,0.18); box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+    .lbi-r { left:0; top:3px; background:linear-gradient(180deg,#ffcc88,#f06868); transform:rotate(-9deg); }
+    .lbi-g { left:10px;top:1px;background:linear-gradient(180deg,#ffe7b4,#efc058);transform:rotate(-1deg); }
+    .lbi-b { left:20px;top:4px;background:linear-gradient(180deg,#d4e8ff,#68a4ff);transform:rotate(8deg); }
+    .lobby-brand-text {
+      font-family: 'DM Serif Display',serif; font-size: 0.95rem; line-height: 1.1; font-weight: 400;
+    }
+    .back-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 14px; border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.06);
+      color: #c8b8a0; text-decoration: none; font-size: 0.82rem; font-weight: 600;
+      transition: background 140ms;
+    }
+    .back-btn:hover { background: rgba(255,255,255,0.12); }
+
+    /* ── Main ── */
+    .lobby-main {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: flex-start;
+      padding: 28px 16px 48px;
+      overflow-y: auto;
+    }
+
+    .lobby-shell {
+      width: min(560px, 100%);
+      display: flex; flex-direction: column; gap: 16px;
+    }
+
+    /* ── Game identity strip ── */
+    .game-id-strip {
+      display: flex; align-items: center; gap: 14px;
+      padding: 16px 18px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 18px;
+    }
+    .game-id-icon { font-size: 2rem; line-height: 1; }
+    .game-id-name {
+      font-family: 'DM Serif Display',serif;
+      font-size: 1.55rem; font-weight: 400; margin: 0; line-height: 1;
+    }
+    .game-id-sub {
+      font-size: 0.8rem; color: rgba(255,232,190,0.5); margin: 3px 0 0;
+    }
+
+    /* ── Panel ── */
+    .lobby-panel {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px;
+      overflow: hidden;
+    }
+    .lp-header {
+      padding: 13px 18px 0;
+      font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.13em; color: rgba(255,232,190,0.45);
+    }
+    .lp-body { padding: 10px 18px 16px; display: flex; flex-direction: column; gap: 12px; }
+
+    /* ── Mode selector cards ── */
+    .mode-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 9px;
+    }
+    .mode-card {
+      display: flex; flex-direction: column; gap: 4px;
+      padding: 13px 14px; border-radius: 14px;
+      border: 1.5px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.04);
+      cursor: pointer; transition: all 160ms ease;
+      text-align: left; color: #f2e8d6;
+    }
+    .mode-card:hover {
+      border-color: rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.07);
+      transform: translateY(-1px);
+    }
+    .mode-card.selected {
+      border-color: rgba(192,75,48,0.65);
+      background: rgba(192,75,48,0.12);
+      box-shadow: 0 0 0 1px rgba(192,75,48,0.3), 0 6px 18px rgba(0,0,0,0.22);
+    }
+    .mc-icon { font-size: 1.35rem; line-height: 1; }
+    .mc-title { font-weight: 700; font-size: 0.88rem; }
+    .mc-desc { font-size: 0.74rem; color: rgba(255,232,190,0.45); line-height: 1.4; }
+
+    /* ── Room code input ── */
+    .room-row {
+      display: flex; gap: 9px; align-items: flex-end;
+    }
+    .lobby-field { display: flex; flex-direction: column; gap: 5px; flex: 1; }
+    .lobby-label {
+      font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em;
+      color: rgba(255,232,190,0.45); font-weight: 600;
+    }
+    .lobby-input {
+      height: 40px; padding: 0 12px; border-radius: 11px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.9); color: #1a1612;
+      font-size: 0.9rem; font-family: 'DM Sans',sans-serif;
+    }
+    .lobby-input:focus { outline: 2px solid rgba(192,75,48,0.6); }
+
+    /* ── Name inputs ── */
+    .names-grid {
+      display: grid; gap: 9px;
+    }
+    .name-row {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .name-avatar {
+      width: 34px; height: 34px; border-radius: 50%;
+      display: grid; place-items: center;
+      font-size: 0.7rem; font-weight: 700; flex-shrink: 0;
+      border: 2.5px solid rgba(255,255,255,0.8);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.24);
+    }
+    .name-avatar.av0 { background: linear-gradient(150deg,#f8a44e,#de6828); }
+    .name-avatar.av1 { background: linear-gradient(150deg,#68d8e4,#5a78ff); }
+    .name-avatar.av2 { background: linear-gradient(150deg,#a8e070,#44aa44); }
+    .name-type-badge {
+      font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em;
+      color: rgba(255,232,190,0.45); font-weight: 600; flex-shrink: 0; min-width: 28px;
+    }
+
+    /* ── Divider ── */
+    .lp-divider {
+      height: 1px; background: rgba(255,255,255,0.07); margin: 2px 0;
+    }
+
+    /* ── Status line ── */
+    .lobby-status {
+      font-size: 0.78rem; color: rgba(255,220,100,0.7);
+      min-height: 18px; text-align: center;
+    }
+
+    /* ── Launch button ── */
+    .launch-btn {
+      width: 100%; padding: 14px; border-radius: 14px; border: 0;
+      background: linear-gradient(135deg, #c04b30, #8c3020);
+      color: #fff; font-size: 1rem; font-weight: 700; cursor: pointer;
+      box-shadow: 0 10px 28px rgba(140,48,32,0.38);
+      transition: all 160ms ease; letter-spacing: 0.02em;
+      font-family: 'DM Sans',sans-serif;
+    }
+    .launch-btn:hover { transform: translateY(-2px); box-shadow: 0 14px 32px rgba(140,48,32,0.48); }
+    .launch-btn:active { transform: translateY(0); }
+    .launch-btn:disabled { opacity: 0.4; cursor: default; transform: none; box-shadow: none; }
+
+    /* ── Hotseat notice ── */
+    .hotseat-notice {
+      padding: 10px 14px; border-radius: 11px;
+      background: rgba(255,220,100,0.08);
+      border: 1px solid rgba(255,220,100,0.2);
+      font-size: 0.8rem; color: rgba(255,220,100,0.8); line-height: 1.5;
+      display: none;
+    }
+    .hotseat-notice.show { display: block; }
+
+    /* ── Responsive ── */
+    @media (max-width: 480px) {
+      .mode-grid { grid-template-columns: 1fr 1fr; }
+      .lobby-main { padding: 18px 12px 36px; }
+    }
+    @media (max-width: 360px) {
+      .mode-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="lobby-page">
+
+  <!-- Top bar -->
+  <header class="lobby-topbar">
+    <a class="lobby-brand" href="./index.html">
+      <span class="lobby-brand-icon" aria-hidden="true">
+        <span class="lbi lbi-r"></span>
+        <span class="lbi lbi-g"></span>
+        <span class="lbi lbi-b"></span>
+      </span>
+      <span class="lobby-brand-text"><span>Card Game</span><br><span>Compilation</span></span>
+    </a>
+    <a class="back-btn" href="./index.html">&#8592; All games</a>
+  </header>
+
+  <!-- Main -->
+  <main class="lobby-main">
+    <div class="lobby-shell">
+
+      <!-- Game identity -->
+      <div class="game-id-strip">
+        <span class="game-id-icon" id="game-icon">🃏</span>
+        <div>
+          <h1 class="game-id-name" id="game-name">Loading…</h1>
+          <p class="game-id-sub" id="game-sub"></p>
+        </div>
+      </div>
+
+      <!-- Mode selection -->
+      <div class="lobby-panel">
+        <div class="lp-header">Game mode</div>
+        <div class="lp-body">
+          <div class="mode-grid" id="mode-grid" role="radiogroup" aria-label="Game mode">
+            <!-- populated by JS -->
+          </div>
+          <!-- Room code row, shown only in room modes -->
+          <div class="room-row" id="room-row" style="display:none">
+            <div class="lobby-field">
+              <label class="lobby-label" for="room-code-input">Room code</label>
+              <input class="lobby-input" id="room-code-input" placeholder="e.g. GAME-1" autocomplete="off" maxlength="24"/>
+            </div>
+          </div>
+          <!-- Hotseat notice -->
+          <div class="hotseat-notice" id="hotseat-notice">
+            &#128073; In hotseat mode, all players share this device. Pass it around on each turn.
+          </div>
+        </div>
+      </div>
+
+      <!-- Player names -->
+      <div class="lobby-panel">
+        <div class="lp-header">Player names</div>
+        <div class="lp-body">
+          <div class="names-grid" id="names-grid">
+            <!-- populated by JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Status + Launch -->
+      <div class="lobby-status" id="lobby-status"></div>
+      <button class="launch-btn" id="launch-btn">Launch game &#8594;</button>
+
+    </div>
+  </main>
+
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════
+   LOBBY — reads ?game= from URL, builds config UI,
+   writes to sessionStorage, then navigates to game page
+   ══════════════════════════════════════════════════════ */
+
+const GAMES = {
+  sevens: {
+    name: 'Sevens',
+    icon: '🃏',
+    sub: '3 players · Board building · Full deck',
+    file: 'sevens.html',
+    players: 3,
+    defaultCode: 'SEVENS-1',
+    defaultNames: ['Player 1', 'Player 2', 'Player 3']
+  },
+  ftt: {
+    name: 'Five-Three-Two',
+    icon: '🎯',
+    sub: '3 players · Trick taking · 30-card deck',
+    file: 'five-three-two.html',
+    players: 3,
+    defaultCode: 'FTT-1',
+    defaultNames: ['Player 1', 'Player 2', 'Player 3']
+  },
+  beggar: {
+    name: 'Beggar-Moneylender',
+    icon: '💰',
+    sub: '2 players · Pile capture · Full deck',
+    file: 'beggar-moneylender.html',
+    players: 2,
+    defaultCode: 'BEGGAR-1',
+    defaultNames: ['Player 1', 'Player 2']
+  }
+};
+
+// Modes available per player count
+function getModes(numPlayers) {
+  if (numPlayers === 2) {
+    return [
+      { id: 'solo',      icon: '🤖', title: 'vs CPU',         desc: 'You vs computer' },
+      { id: 'hotseat',   icon: '🤝', title: 'Hotseat',        desc: 'Pass the device' },
+      { id: 'room-host', icon: '📡', title: 'Host Room',      desc: 'Share code with friend' },
+      { id: 'room-join', icon: '🔗', title: 'Join Room',      desc: 'Enter a room code' }
+    ];
+  }
+  return [
+    { id: 'solo',      icon: '🤖', title: '1P vs 2 CPUs',   desc: 'You + two computers' },
+    { id: 'semi',      icon: '👥', title: '2P vs 1 CPU',    desc: 'Two humans, one CPU' },
+    { id: 'hotseat',   icon: '🤝', title: 'Full Hotseat',   desc: 'All 3 share device' },
+    { id: 'room-host', icon: '📡', title: 'Host Room',      desc: 'Share code with others' },
+    { id: 'room-join', icon: '🔗', title: 'Join Room',      desc: 'Enter a room code' }
+  ];
+}
+
+// ── Read game param ──
+const params = new URLSearchParams(location.search);
+const gameKey = params.get('game') || 'sevens';
+const gameCfg = GAMES[gameKey] || GAMES.sevens;
+const modeList = getModes(gameCfg.players);
+
+let selectedMode = modeList[0].id;
+let roomCode = gameCfg.defaultCode;
+
+function normalizeRoomCode(value) {
+  return String(value || '').toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 24);
+}
+
+// ── Populate game identity ──
+document.getElementById('game-icon').textContent = gameCfg.icon;
+document.getElementById('game-name').textContent = gameCfg.name;
+document.getElementById('game-sub').textContent  = gameCfg.sub;
+document.title = `Setup ${gameCfg.name} — Card Game Compilation`;
+
+// ── Populate mode grid ──
+const modeGrid = document.getElementById('mode-grid');
+function renderModes() {
+  modeGrid.innerHTML = modeList.map(m => `
+    <button class="mode-card ${selectedMode === m.id ? 'selected' : ''}"
+            data-mode="${m.id}" role="radio" aria-checked="${selectedMode === m.id}">
+      <span class="mc-icon">${m.icon}</span>
+      <span class="mc-title">${m.title}</span>
+      <span class="mc-desc">${m.desc}</span>
+    </button>
+  `).join('');
+  modeGrid.querySelectorAll('.mode-card').forEach(btn => {
+    btn.addEventListener('click', () => {
+      selectedMode = btn.dataset.mode;
+      renderModes();
+      updateVisibility();
+    });
+  });
+}
+renderModes();
+
+// ── Room code ──
+const roomRow     = document.getElementById('room-row');
+const roomInput   = document.getElementById('room-code-input');
+const hotseatNote = document.getElementById('hotseat-notice');
+roomInput.value   = gameCfg.defaultCode;
+roomInput.addEventListener('input', () => {
+  const normalized = normalizeRoomCode(roomInput.value);
+  roomCode = normalized || gameCfg.defaultCode;
+  roomInput.value = roomCode;
+});
+
+function updateVisibility() {
+  const isRoom = selectedMode === 'room-host' || selectedMode === 'room-join';
+  roomRow.style.display    = isRoom ? 'flex' : 'none';
+  hotseatNote.classList.toggle('show', selectedMode === 'hotseat');
+  renderNames(); // controllers change with mode
+  updateStatus();
+}
+
+// ── Player names + type ──
+const namesGrid = document.getElementById('names-grid');
+
+function getControllers() {
+  const n = gameCfg.players;
+  if (selectedMode === 'solo') {
+    return ['local'].concat(Array.from({length: n-1}, () => 'ai'));
+    // [local, ai, ai] for 3p; [local, ai] for 2p
+  }
+  if (selectedMode === 'semi') {
+    // 3-player only: seat0=local, seat1=local, seat2=ai
+    return ['local','local','ai'];
+  }
+  if (selectedMode === 'hotseat') {
+    return Array(n).fill('local');
+  }
+  if (selectedMode === 'room-host') {
+    // host = seat 0 = local; others = remote
+    return ['local', ...Array(n-1).fill('remote')];
+  }
+  if (selectedMode === 'room-join') {
+    // join = seat 1 = local; seat 0 = remote; others = ai/remote
+    if (n === 2) return ['remote','local'];
+    return ['remote','local','remote'];
+  }
+  return Array(n).fill('local');
+}
+
+function controllerLabel(ctrl) {
+  return ctrl === 'ai' ? 'CPU' : ctrl === 'remote' ? 'Online' : 'Human';
+}
+function controllerColor(ctrl) {
+  if (ctrl === 'ai')     return '#64b5f6';
+  if (ctrl === 'remote') return '#81c784';
+  return '#f8a44e';
+}
+
+function renderNames() {
+  const controllers = getControllers();
+  namesGrid.innerHTML = controllers.map((ctrl, i) => {
+    const isEditable = ctrl === 'local';
+    const defaultName = gameCfg.defaultNames[i];
+    // Try to restore any previously typed name
+    const stored = namesGrid.querySelector(`#name-input-${i}`)?.value || '';
+    const val = stored || defaultName;
+    return `
+      <div class="name-row">
+        <div class="name-avatar av${i}">${['P1','P2','P3'][i]}</div>
+        <span class="name-type-badge" style="color:${controllerColor(ctrl)}">${controllerLabel(ctrl)}</span>
+        <div class="lobby-field" style="flex:1">
+          <input class="lobby-input" id="name-input-${i}"
+            value="${val}"
+            placeholder="${defaultName}"
+            maxlength="16" autocomplete="off"
+            ${!isEditable ? 'disabled style="opacity:0.45;background:rgba(255,255,255,0.55)"' : ''}
+          />
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+renderNames();
+
+// ── Status line ──
+const statusEl  = document.getElementById('lobby-status');
+const launchBtn = document.getElementById('launch-btn');
+
+function updateStatus() {
+  if (selectedMode === 'room-join') {
+    statusEl.textContent = 'You will join the next open online seat in this room.';
+    launchBtn.textContent = 'Join room →';
+  } else if (selectedMode === 'room-host') {
+    statusEl.textContent = 'Launch the room, then share the code. Guests are assigned open seats automatically.';
+    launchBtn.textContent = 'Host & launch →';
+  } else {
+    statusEl.textContent = '';
+    launchBtn.textContent = 'Launch game →';
+  }
+}
+updateStatus();
+
+// ── Launch ──
+launchBtn.addEventListener('click', () => {
+  const controllers = getControllers();
+  const names = controllers.map((_, i) => {
+    const el = document.getElementById(`name-input-${i}`);
+    return el?.value.trim() || gameCfg.defaultNames[i];
+  });
+
+  const config = {
+    game:        gameKey,
+    mode:        selectedMode,
+    roomCode:    normalizeRoomCode(roomInput.value) || gameCfg.defaultCode,
+    names,
+    controllers
+  };
+
+  // Write to sessionStorage so game JS can read it
+  try {
+    sessionStorage.setItem('cgc_lobby_config', JSON.stringify(config));
+  } catch(e) {
+    console.warn('sessionStorage unavailable, falling back to URL params');
+  }
+
+  // Navigate to game
+  window.location.href = gameCfg.file;
+});
+
+// Init visibility
+updateVisibility();
+</script>
+</body>
+</html>

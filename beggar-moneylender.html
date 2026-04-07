@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Beggar-Moneylender — Card Game Compilation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css"/>
+</head>
+<body>
+<div class="game-page" id="app">
+
+  <header class="game-topbar">
+    <a class="brand-block" href="./index.html">
+      <span class="brand-icon-stack" aria-hidden="true">
+        <span class="mini-card mini-card-red"></span>
+        <span class="mini-card mini-card-gold"></span>
+        <span class="mini-card mini-card-blue"></span>
+      </span>
+      <span class="brand-copy"><span>Card Game</span><span>Compilation</span></span>
+    </a>
+    <div class="topbar-center">
+      <span class="turn-chip" id="turn-chip">Loading…</span>
+    </div>
+    <div class="topbar-actions">
+      <button class="icon-btn" id="toggle-chat" type="button" aria-expanded="true">Chat<span class="chat-badge hidden" id="chat-badge">0</span></button>
+      <button class="icon-btn" id="toggle-setup" type="button" aria-expanded="false">Setup</button>
+      <a class="icon-btn" href="./lobby.html?game=beggar">&#8592; Setup</a>
+    </div>
+  </header>
+
+  <div class="status-bar" id="status" role="status" aria-live="polite">Flip your card — match a rank in the pile to capture it.</div>
+
+  <section class="setup-drawer" id="setup-drawer" aria-hidden="true">
+    <div class="setup-row">
+      <div class="setup-group">
+        <label class="setup-label" for="mode">Mode</label>
+        <select class="setup-select" id="mode">
+          <option value="solo">Solo vs CPU</option>
+          <option value="hotseat">Hotseat</option>
+          <option value="room-host">Host Room</option>
+          <option value="room-join">Join Room</option>
+        </select>
+      </div>
+      <div class="setup-group">
+        <label class="setup-label" for="room-code">Room Code</label>
+        <input class="setup-input" id="room-code" value="BEGGAR-1" autocomplete="off"/>
+      </div>
+      <div class="setup-group" style="flex:none">
+        <label class="setup-label">&nbsp;</label>
+        <div class="setup-actions">
+          <button class="setup-btn primary" id="start-btn">Restart</button>
+        </div>
+      </div>
+    </div>
+    <div class="setup-status" id="setup-status">Room mode syncs live over the server with shared chat.</div>
+  </section>
+
+  <main class="table-arena arena-2p">
+    <div class="opp-top" id="seat-top"></div>
+
+    <div class="board-area">
+      <div class="board-shell">
+        <div class="board-inner">
+          <div class="board-stage">
+            <div class="beggar-board">
+              <div class="pile-area" id="pile" role="region" aria-label="Central pile"></div>
+              <div class="beggar-stats" id="pile-stats"></div>
+            </div>
+          </div>
+        </div>
+        <aside class="chat-panel open" id="chat-panel" aria-label="Room chat">
+          <div class="chat-panel-header">
+            <div class="chat-panel-title">
+              <div class="chat-title-copy">
+                <strong id="chat-room-label">Table chat</strong>
+                <span id="chat-room-presence">Room chat becomes active when you host or join.</span>
+              </div>
+              <div class="chat-sheen" aria-hidden="true"></div>
+            </div>
+          </div>
+          <div class="chat-messages" id="chat-messages">
+            <div class="chat-empty">Room chat becomes active when you host or join.</div>
+          </div>
+          <form class="chat-form disabled" id="chat-form">
+            <input class="chat-input" id="chat-input" type="text" maxlength="240" placeholder="Type a message for the room" disabled />
+            <button class="chat-send" type="submit">Send</button>
+          </form>
+        </aside>
+      </div>
+    </div>
+
+    <section class="player-tray">
+      <div class="player-identity" id="player-profile"></div>
+      <div class="hand-wrap">
+        <div class="hand-label" id="hand-title">Your Turn</div>
+        <div class="flip-zone">
+          <div class="deck-visual" id="deck-visual" role="button" tabindex="0" aria-label="Flip top card">
+            <div class="card card-back"></div>
+            <div class="card card-back"></div>
+            <div class="card card-back"></div>
+          </div>
+          <button class="flip-btn" id="flip-btn">Flip Top Card</button>
+        </div>
+      </div>
+      <div class="last-card-panel" id="last-card-panel">
+        <div class="last-card-label">Last flipped</div>
+        <div style="color:var(--table-muted);font-size:0.8rem" id="last-card-display">—</div>
+      </div>
+    </section>
+  </main>
+
+  <div class="gameover-overlay hidden" id="gameover-overlay" role="dialog" aria-modal="true">
+    <div class="gameover-card">
+      <h3 id="go-title">Game Over</h3>
+      <p id="go-message"></p>
+      <div class="gameover-actions">
+        <button class="go-btn primary" id="go-restart">Play Again</button>
+        <a class="go-btn secondary" href="./lobby.html?game=beggar">Change Setup</a>
+        <a class="go-btn secondary" href="./index.html">&#8592; Menu</a>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script src="/socket.io/socket.io.js"></script>
+<script src="./room-bridge.js"></script>
+<script src="./lobby-config.js"></script>
+<script src="./beggar-moneylender.js"></script>
+</body>
+</html>
