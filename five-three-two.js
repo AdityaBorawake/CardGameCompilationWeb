@@ -152,7 +152,7 @@ function initState(mode){
   const ctrl=lobbyCfg?resolveControllers(lobbyCfg):{
     0:(mode==='room-join')?'remote':'local',
     1:(mode==='hotseat'||mode==='semi')?'local':(mode==='room-join')?'local':(mode==='room-host')?'remote':'ai',
-    2:(mode==='hotseat')?'local':'ai'
+    2:(mode==='hotseat')?'local':((mode==='room-host'||mode==='room-join')?'remote':'ai')
   };
   const names=lobbyCfg?.names||DEFAULT_NAMES;
   const players=[0,1,2].map(i=>({name:names[i]||DEFAULT_NAMES[i],hand:[],controller:Array.isArray(ctrl)?ctrl[i]:ctrl[i],score:0}));

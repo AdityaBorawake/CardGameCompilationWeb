@@ -229,6 +229,7 @@ class RoomBridge {
     this.playerId = null;
     this.userId = null;
     this.hadSocketConnection = false;
+    this.restoredSession = false;
     this.chat = window.__cgcChatUI || null;
     if (this.chat) this.chat.setBridge(this);
   }
@@ -264,14 +265,17 @@ class RoomBridge {
 
   hydrateRoomSession(roomCode, role, preferredSeat) {
     const session = this.readStoredRoomSession();
-    if (!session) return;
-    if (session.roomCode !== roomCode) return;
-    if (session.mode === 'room-host' && role !== 'host') return;
-    if (session.mode === 'room-join' && role !== 'client') return;
+    this.restoredSession = false;
+    if (!session) return false;
+    if (session.roomCode !== roomCode) return false;
+    if (session.mode === 'room-host' && role !== 'host') return false;
+    if (session.mode === 'room-join' && role !== 'client') return false;
 
     this.playerId = session.playerId || this.playerId;
     this.preferredSeat = normalizeSeat(session.preferredSeat) ?? normalizeSeat(preferredSeat);
     this.seat = this.preferredSeat;
+    this.restoredSession = true;
+    return true;
   }
 
   host(roomCode, preferredSeat = this.preferredSeat ?? 0) {
@@ -291,9 +295,13 @@ class RoomBridge {
     this.close();
     this.roomCode = String(roomCode || '').trim().toUpperCase();
     this.role = 'client';
-    this.preferredSeat = normalizeSeat(preferredSeat);
-    this.seat = this.preferredSeat;
-    this.hydrateRoomSession(this.roomCode, this.role, this.preferredSeat);
+    this.preferredSeat = null;
+    this.seat = null;
+    const reusedSession = this.hydrateRoomSession(this.roomCode, this.role, preferredSeat);
+    if (!reusedSession) {
+      this.preferredSeat = null;
+      this.seat = null;
+    }
     this.playerId = this.playerId || makeStablePlayerId();
     this.persistRoomSession();
     this.connect();
