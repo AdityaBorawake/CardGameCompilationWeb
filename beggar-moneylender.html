@@ -46,7 +46,10 @@
       </div>
       <div class="setup-group">
         <label class="setup-label" for="room-code">Room Code</label>
-        <input class="setup-input" id="room-code" value="BEGGAR-1" autocomplete="off"/>
+        <div class="room-inline-actions">
+          <input class="setup-input" id="room-code" value="BEGGAR-1" autocomplete="off"/>
+          <button class="setup-mini-btn" id="new-room-code" type="button">New code</button>
+        </div>
       </div>
       <div class="setup-group" style="flex:none">
         <label class="setup-label">&nbsp;</label>
@@ -54,6 +57,10 @@
           <button class="setup-btn primary" id="start-btn">Restart</button>
         </div>
       </div>
+    </div>
+    <div class="names-row">
+      <div class="setup-group"><label class="setup-label" for="name-0">Player 1</label><input class="setup-input" id="name-0" placeholder="e.g. Alice" maxlength="16" autocomplete="off"/></div>
+      <div class="setup-group"><label class="setup-label" for="name-1">Player 2</label><input class="setup-input" id="name-1" placeholder="e.g. Bob" maxlength="16" autocomplete="off"/></div>
     </div>
     <div class="setup-status" id="setup-status">Room mode syncs live over the server with shared chat.</div>
   </section>
@@ -103,6 +110,11 @@
             <div class="card card-back"></div>
           </div>
           <button class="flip-btn" id="flip-btn">Flip Top Card</button>
+        </div>
+        <div class="turn-guard hidden" id="turn-guard">
+          <div class="turn-guard-title" id="turn-guard-title">Pass the device</div>
+          <div class="turn-guard-copy" id="turn-guard-copy"></div>
+          <button class="turn-guard-btn" id="turn-guard-btn" type="button">Reveal turn</button>
         </div>
       </div>
       <div class="last-card-panel" id="last-card-panel">

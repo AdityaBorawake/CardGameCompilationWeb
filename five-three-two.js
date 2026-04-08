@@ -13,8 +13,9 @@ const RANKS=['6','7','8','9','10','J','Q','K','A'];
 const DEFAULT_NAMES=['Player 1','Player 2','Player 3'];
 const AVATARS=['P1','P2','P3'];
 
-const app={mode:'solo',localSeat:0,bridge:null,state:null,busy:false};
+const app={mode:'solo',localSeat:0,bridge:null,state:null,busy:false,guardSeat:null,revealedSeat:null};
 let pendingNextRound=null;
+const ROOM_WORDS=['AMBER','COMET','FABLE','FJORD','LUNAR','MAPLE','NOVA','RAVEN','SOLAR','TIGER','VELVET','WILLOW'];
 
 const modeEl        =document.getElementById('mode');
 const roomCodeEl    =document.getElementById('room-code');
@@ -32,6 +33,11 @@ const roundContinue =document.getElementById('round-continue');
 const statusEl      =document.getElementById('status');
 const announceEl    =document.getElementById('announce');
 const trumpModal    =document.getElementById('trump-modal');
+const newRoomCodeBtn=document.getElementById('new-room-code');
+const guardEl       =document.getElementById('turn-guard');
+const guardTitleEl  =document.getElementById('turn-guard-title');
+const guardCopyEl   =document.getElementById('turn-guard-copy');
+const guardBtn      =document.getElementById('turn-guard-btn');
 const chatUI        =window.initGameChat?window.initGameChat():null;
 let lobbyCfg=null;
 
@@ -42,7 +48,27 @@ function suitClass(s){return(s==='Hearts'||s==='Diamonds')?'red-suit':'black-sui
 function sortCards(cards){return[...cards].sort((a,b)=>a.suit===b.suit?rankVal(a.rank)-rankVal(b.rank):SUITS.indexOf(a.suit)-SUITS.indexOf(b.suit));}
 function createDeck(){return SUITS.flatMap(s=>RANKS.map(r=>({suit:s,rank:r,key:`${r}-${s}`})));}
 function quota(i,ro){return[5,3,2][(i+ro)%3];}
-function currentHumanSeat(){return app.mode==='hotseat'?app.state.turn:app.localSeat;}
+function randomTail(length=3){const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';return Array.from({length},()=>chars[Math.floor(Math.random()*chars.length)]).join('');}
+function makeRoomCode(){const first=ROOM_WORDS[Math.floor(Math.random()*ROOM_WORDS.length)];let second=ROOM_WORDS[Math.floor(Math.random()*ROOM_WORDS.length)];if(second===first)second=ROOM_WORDS[(ROOM_WORDS.indexOf(first)+5)%ROOM_WORDS.length];return`${first}-${second}-${randomTail(3)}`;}
+function isSharedDeviceMode(){return app.mode==='hotseat'||app.mode==='semi';}
+function activeSharedSeat(state=app.state){
+  if(!state||!isSharedDeviceMode())return null;
+  if(state.phase==='trump-select'){
+    return state.players?.[state.caller]?.controller==='local'?state.caller:null;
+  }
+  return state.players?.[state.turn]?.controller==='local'?state.turn:null;
+}
+function currentHumanSeat(){return activeSharedSeat(app.state)??app.localSeat;}
+function syncTurnGuard(state=app.state){
+  const nextSeat=activeSharedSeat(state);
+  if(app.guardSeat!==nextSeat){app.guardSeat=nextSeat;app.revealedSeat=null;}
+}
+function turnGuardActive(state=app.state){
+  if(!state||state.over)return false;
+  const seat=activeSharedSeat(state);
+  return seat!==null&&app.revealedSeat!==seat;
+}
+function renderGuardCards(count){return Array.from({length:Math.max(1,Math.min(count,8))},()=>'<div class="guard-card" aria-hidden="true"></div>').join('');}
 function configuredLocalSeat(fallback=app.localSeat){
   const preferredSeat=Number(lobbyCfg?.preferredSeat);
   if(Number.isInteger(preferredSeat))return preferredSeat;
@@ -67,6 +93,7 @@ function callerSeat(ro){return ro%3;} // seat 0 rotates: offset 0→seat0, 1→s
 
 function storedControllers(){
   if(app.mode==='solo')return['local','ai','ai'];
+  if(app.mode==='semi')return['local','local','ai'];
   if(app.mode==='hotseat')return['local','local','local'];
   if(app.mode==='room-host'||app.mode==='room-join'){
     return Array.from({length:3},(_,seat)=>{
@@ -80,6 +107,7 @@ function storedControllers(){
 
 function storedNames(){
   if(app.state?.players?.length)return app.state.players.map(player=>player.name);
+  if(document.getElementById('name-0'))return getNames();
   if(lobbyCfg?.names?.length)return lobbyCfg.names.slice(0,3);
   return DEFAULT_NAMES.slice(0,3);
 }
@@ -107,6 +135,7 @@ function announce(msg,dur=2400){
 
 /* ── Names ── */
 function getNames(){return[0,1,2].map(i=>document.getElementById(`name-${i}`)?.value.trim()||DEFAULT_NAMES[i]);}
+function syncNameInputs(names){names?.forEach((name,i)=>{const input=document.getElementById(`name-${i}`);if(input)input.value=name||DEFAULT_NAMES[i];});}
 function applyNames(players){const n=getNames();players.forEach((p,i)=>p.name=n[i]);}
 
 /* ═══════════════════════════════════════════
@@ -122,7 +151,7 @@ function applyNames(players){const n=getNames();players.forEach((p,i)=>p.name=n[
 function initState(mode){
   const ctrl=lobbyCfg?resolveControllers(lobbyCfg):{
     0:(mode==='room-join')?'remote':'local',
-    1:(mode==='hotseat')?'local':(mode==='room-join')?'local':(mode==='room-host')?'remote':'ai',
+    1:(mode==='hotseat'||mode==='semi')?'local':(mode==='room-join')?'local':(mode==='room-host')?'remote':'ai',
     2:(mode==='hotseat')?'local':'ai'
   };
   const names=lobbyCfg?.names||DEFAULT_NAMES;
@@ -487,12 +516,15 @@ function syncIfHost(){if(app.mode==='room-host'&&app.bridge)app.bridge.broadcast
 function render(){
   if(!app.state)return;
   const{state}=app;
+  syncTurnGuard(state);
   chatUI?.setContext({mode:app.mode,roomCode:roomCodeEl?.value?.trim?.()||'',playerName:currentPlayerName()});
 
+  const guardActive=turnGuardActive(state);
   const localTrumpPicker=state.phase==='trump-select'
     && typeof state.caller==='number'
     && state.caller===currentHumanSeat()
-    && state.players[state.caller]?.controller!=='ai';
+    && state.players[state.caller]?.controller!=='ai'
+    && !guardActive;
   if(trumpModal){
     if(localTrumpPicker)showTrumpModal();
     else trumpModal.classList.remove('visible');
@@ -549,26 +581,40 @@ function render(){
 
   // Hand
   const hs=currentHumanSeat();
-  const canPlay=state.phase==='playing'&&state.turn===hs&&!state.over&&!app.busy;
+  const canPlay=state.phase==='playing'&&state.turn===hs&&!state.over&&!app.busy&&!guardActive;
   const legalSet=state.phase==='playing'?new Set(legalCards(hs).map(c=>c.key)):new Set();
-  const handLabel=state.phase==='trump-select'&&hs===state.caller
-    ?`${state.players[hs].name} — first 5 cards (choosing trump)`
-    :`${state.players[hs].name} — ${state.players[hs].hand.length} cards`;
+  const handLabel=guardActive
+    ?`${state.players[hs].name} — hidden hand`
+    :state.phase==='trump-select'&&hs===state.caller
+      ?`${state.players[hs].name} — first 5 cards (choosing trump)`
+      :`${state.players[hs].name} — ${state.players[hs].hand.length} cards`;
   document.getElementById('hand-title').textContent=handLabel;
   const handEl=document.getElementById('hand');
-  handEl.innerHTML=state.players[hs].hand.map(card=>{
-    const disabled=!canPlay||!legalSet.has(card.key);
-    return `<div class="card hand-card ${suitClass(card.suit)} ${disabled?'disabled':'playable'}" role="button" tabindex="${disabled?-1:0}" aria-label="${card.rank} of ${card.suit}" data-card="${card.key}"><span class="c-rank">${card.rank}</span><span class="c-suit">${SUIT_CHAR[card.suit]}</span></div>`;
-  }).join('');
-  handEl.querySelectorAll('[data-card]').forEach(el=>{
-    const h=()=>{
-      if(el.classList.contains('disabled'))return;
-      if(app.mode==='room-join'){app.bridge.sendIntent({type:'play',cardKey:el.dataset.card});setupStatusEl.textContent='Move sent.';return;}
-      playCard(el.dataset.card);
-    };
-    el.addEventListener('click',h);
-    el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();h();}});
-  });
+  handEl.classList.toggle('guarded',guardActive);
+  if(guardActive){
+    handEl.innerHTML=renderGuardCards(state.players[hs].hand.length);
+  }else{
+    handEl.innerHTML=state.players[hs].hand.map(card=>{
+      const disabled=!canPlay||!legalSet.has(card.key);
+      return `<div class="card hand-card ${suitClass(card.suit)} ${disabled?'disabled':'playable'}" role="button" tabindex="${disabled?-1:0}" aria-label="${card.rank} of ${card.suit}" data-card="${card.key}"><span class="c-rank">${card.rank}</span><span class="c-suit">${SUIT_CHAR[card.suit]}</span></div>`;
+    }).join('');
+    handEl.querySelectorAll('[data-card]').forEach(el=>{
+      const h=()=>{
+        if(el.classList.contains('disabled'))return;
+        if(app.mode==='room-join'){app.bridge.sendIntent({type:'play',cardKey:el.dataset.card});setupStatusEl.textContent='Move sent.';return;}
+        playCard(el.dataset.card);
+      };
+      el.addEventListener('click',h);
+      el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();h();}});
+    });
+  }
+  if(guardEl){
+    guardEl.classList.toggle('hidden',!guardActive);
+    if(guardActive){
+      guardTitleEl.textContent=`Pass to ${state.players[hs].name}`;
+      guardCopyEl.textContent='When they are ready, press Reveal cards to show this hand.';
+    }
+  }
 
   // Profile
   document.getElementById('player-profile').innerHTML=`<div class="player-avatar">${AVATARS[hs]}</div><div><div class="player-name">${state.players[hs].name}</div><div class="player-sub">Quota ${quota(hs,state.roundOffset)} | &#9733; ${state.players[hs].score}</div></div>`;
@@ -597,12 +643,14 @@ function startGame(fromLobby=true){
     app.mode=resolveMode(lobbyCfg);
     if(roomCodeEl)roomCodeEl.value=lobbyCfg.roomCode;
     if(modeEl)modeEl.value=app.mode;
-    lobbyCfg.names?.forEach((name,i)=>{const input=document.getElementById(`name-${i}`);if(input)input.value=name||DEFAULT_NAMES[i];});
+    syncNameInputs(lobbyCfg.names);
   }else{
     lobbyCfg=null;
     app.mode=modeEl.value;
   }
-  app.localSeat=app.mode==='room-host'||app.mode==='room-join'?configuredLocalSeat(app.mode==='room-host'?0:1):0;
+  app.localSeat=app.mode==='room-join'?configuredLocalSeat(1):configuredLocalSeat(0);
+  app.guardSeat=null;
+  app.revealedSeat=null;
   app.busy=false;pendingNextRound=null;
   goOverlay.classList.add('hidden');roundOverlay.classList.remove('visible');
   if(trumpModal)trumpModal.classList.remove('visible');
@@ -612,11 +660,11 @@ function startGame(fromLobby=true){
   if(app.mode==='room-host'||app.mode==='room-join'){
     app.bridge=new RoomBridge('ftt-room',handleRoomMessage,t=>{setupStatusEl.textContent=t;},{maxPlayers:3,preferredSeat:app.localSeat});
     app.localSeat=app.mode==='room-host'?app.bridge.host(rc,app.localSeat):app.bridge.join(rc,app.localSeat);
-  }else{app.bridge=null;app.localSeat=0;}
+  }else{app.bridge=null;app.localSeat=configuredLocalSeat(0);}
   if(chatUI)chatUI.setBridge(app.bridge||null);
   if(app.mode!=='room-join'){
     initState(app.mode);syncIfHost();
-    const msgs={solo:'Solo match started.',hotseat:'Hotseat — pass device each turn.','room-host':`Hosting room ${roomCodeEl.value}.`};
+    const msgs={solo:'Solo match started.',semi:'2P vs 1 CPU started. Shared hands reveal turn by turn.',hotseat:'Hotseat — pass device each turn.','room-host':`Hosting room ${roomCodeEl.value}.`};
     setupStatusEl.textContent=msgs[app.mode]||'';
   }else{
     app.state=null;
@@ -699,6 +747,17 @@ function handleRoomMessage(message){
 document.getElementById('start-btn').addEventListener('click',()=>startGame(false));
 document.getElementById('restart-btn').addEventListener('click',()=>startGame(false));
 document.getElementById('go-restart').addEventListener('click',()=>startGame(false));
+guardBtn?.addEventListener('click',()=>{
+  const seat=activeSharedSeat(app.state);
+  if(seat===null)return;
+  app.revealedSeat=seat;
+  render();
+});
+newRoomCodeBtn?.addEventListener('click',()=>{
+  if(!roomCodeEl)return;
+  roomCodeEl.value=makeRoomCode();
+  persistCurrentConfig(roomCodeEl.value);
+});
 toggleSetupBtn.addEventListener('click',()=>{
   const o=setupDrawer.classList.contains('open');
   setupDrawer.classList.toggle('open',!o);

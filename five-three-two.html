@@ -137,6 +137,7 @@
         <label class="setup-label" for="mode">Mode</label>
         <select class="setup-select" id="mode">
           <option value="solo">Solo vs CPU</option>
+          <option value="semi">2P vs 1 CPU</option>
           <option value="hotseat">Hotseat (pass device)</option>
           <option value="room-host">Host Room</option>
           <option value="room-join">Join Room</option>
@@ -144,7 +145,10 @@
       </div>
       <div class="setup-group">
         <label class="setup-label" for="room-code">Room Code</label>
-        <input class="setup-input" id="room-code" value="FTT-1" autocomplete="off"/>
+        <div class="room-inline-actions">
+          <input class="setup-input" id="room-code" value="FTT-1" autocomplete="off"/>
+          <button class="setup-mini-btn" id="new-room-code" type="button">New code</button>
+        </div>
       </div>
       <div class="setup-group" style="flex:none">
         <label class="setup-label">&nbsp;</label>
@@ -204,6 +208,11 @@
       <div class="hand-wrap">
         <div class="hand-label" id="hand-title">Your Hand</div>
         <div class="hand-fan" id="hand" role="group" aria-label="Your cards"></div>
+        <div class="turn-guard hidden" id="turn-guard">
+          <div class="turn-guard-title" id="turn-guard-title">Pass the device</div>
+          <div class="turn-guard-copy" id="turn-guard-copy"></div>
+          <button class="turn-guard-btn" id="turn-guard-btn" type="button">Reveal cards</button>
+        </div>
       </div>
     </section>
   </main>

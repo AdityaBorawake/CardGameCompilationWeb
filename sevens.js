@@ -205,13 +205,17 @@ const app = {
   mode:      'solo',
   localSeat: 0,
   bridge:    null,
+  guardSeat: null,
+  revealedSeat: null,
 };
 
 let lobbyCfg = null;
+const ROOM_WORDS = ['AMBER','COMET','FABLE','FJORD','LUNAR','MAPLE','NOVA','RAVEN','SOLAR','TIGER','VELVET','WILLOW'];
 
 /* ── DOM refs ── */
 const modeEl         = document.getElementById('mode');
 const roomCodeEl     = document.getElementById('room-code');
+const newRoomCodeBtn = document.getElementById('new-room-code');
 const setupStatusEl  = document.getElementById('setup-status');
 const setupDrawer    = document.getElementById('setup-drawer');
 const toggleSetupBtn = document.getElementById('toggle-setup');
@@ -221,6 +225,11 @@ const goMessage      = document.getElementById('go-message');
 const statusEl       = document.getElementById('status');
 const announceEl     = document.getElementById('announce');
 const skipBtn        = document.getElementById('skip-btn');
+const guardEl        = document.getElementById('turn-guard');
+const guardTitleEl   = document.getElementById('turn-guard-title');
+const guardCopyEl    = document.getElementById('turn-guard-copy');
+const guardBtn       = document.getElementById('turn-guard-btn');
+const nameInputs     = [0, 1, 2].map(index => document.getElementById(`name-${index}`));
 
 /* ── Chat ── */
 const chatUI = window.initGameChat ? window.initGameChat() : null;
@@ -249,8 +258,64 @@ function configuredLocalSeat(fallback = app.localSeat) {
   return Number.isInteger(fallback) ? fallback : 0;
 }
 
+function randomTail(length = 3) {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
+
+function makeRoomCode() {
+  const first = ROOM_WORDS[Math.floor(Math.random() * ROOM_WORDS.length)];
+  let second = ROOM_WORDS[Math.floor(Math.random() * ROOM_WORDS.length)];
+  if (second === first) second = ROOM_WORDS[(ROOM_WORDS.indexOf(first) + 5) % ROOM_WORDS.length];
+  return `${first}-${second}-${randomTail(3)}`;
+}
+
+function getNamesFromInputs() {
+  return nameInputs.map((input, index) => input?.value.trim() || `Player ${index + 1}`);
+}
+
+function syncNameInputs(names) {
+  names?.forEach((name, index) => {
+    if (nameInputs[index]) nameInputs[index].value = name || `Player ${index + 1}`;
+  });
+}
+
+function isSharedDeviceMode() {
+  return app.mode === 'hotseat' || app.mode === 'semi';
+}
+
+function activeSharedSeat(state) {
+  if (!state || !isSharedDeviceMode()) return null;
+  const seat = state.turn;
+  return state.players?.[seat]?.controller === 'local' ? seat : null;
+}
+
+function currentVisibleSeat(state = app.engine?.state) {
+  if (!state) return app.localSeat;
+  return activeSharedSeat(state) ?? app.localSeat;
+}
+
+function syncTurnGuard(state) {
+  const nextGuardSeat = activeSharedSeat(state);
+  if (app.guardSeat !== nextGuardSeat) {
+    app.guardSeat = nextGuardSeat;
+    app.revealedSeat = null;
+  }
+}
+
+function turnGuardActive(state) {
+  if (!state || state.over) return false;
+  const seat = activeSharedSeat(state);
+  return seat !== null && app.revealedSeat !== seat;
+}
+
+function renderGuardCards(count) {
+  return Array.from({ length: Math.max(1, Math.min(count, 8)) }, () => '<div class="guard-card" aria-hidden="true"></div>').join('');
+}
+
 function storedControllers() {
   if (app.mode === 'solo') return ['local', 'ai', 'ai'];
+  if (app.mode === 'semi') return ['local', 'local', 'ai'];
   if (app.mode === 'hotseat') return ['local', 'local', 'local'];
   if (app.mode === 'room-host' || app.mode === 'room-join') {
     return Array.from({ length: 3 }, (_, seat) => {
@@ -264,6 +329,7 @@ function storedControllers() {
 
 function storedNames() {
   if (app.engine?.state?.players?.length) return app.engine.state.players.map(player => player.name);
+  if (nameInputs.some(Boolean)) return getNamesFromInputs();
   if (Array.isArray(lobbyCfg?.names)) return lobbyCfg.names.slice(0, 3);
   return ['Player 1', 'Player 2', 'Player 3'];
 }
@@ -274,6 +340,7 @@ function persistCurrentConfig(roomCode) {
     game: 'sevens',
     mode: app.mode,
     names: storedNames(),
+    playerName: storedNames()[configuredLocalSeat(app.localSeat)] || 'Player 1',
     preferredSeat: app.localSeat,
     roomCode: roomCode || roomCodeEl?.value?.trim?.() || 'SEVENS-1'
   });
@@ -286,6 +353,7 @@ function persistCurrentConfig(roomCode) {
 ═══════════════════════════════════════════ */
 function render(state, engine) {
   if (!state) return;
+  syncTurnGuard(state);
 
   /* Turn chip */
   document.getElementById('turn-chip').textContent = state.over
@@ -307,7 +375,7 @@ function render(state, engine) {
   }
 
   /* Board lanes */
-  const humanSeat  = _humanSeat();
+  const humanSeat  = _humanSeat(state);
   const myLegal    = new Set(legalMoves(state, humanSeat).map(c => c.key));
 
   document.getElementById('board').innerHTML = SUITS.map(suit => {
@@ -335,33 +403,47 @@ function render(state, engine) {
   }).join('');
 
   /* Hand */
-  const isMyTurn  = state.turn === humanSeat && !state.over;
+  const guardActive = turnGuardActive(state);
+  const isMyTurn  = state.turn === humanSeat && !state.over && !guardActive;
   const myPlayer  = state.players[humanSeat];
   document.getElementById('hand-title').textContent =
-    `${myPlayer.name} — ${myPlayer.hand.length} cards`;
+    guardActive ? `${myPlayer.name} — hidden hand` : `${myPlayer.name} — ${myPlayer.hand.length} cards`;
 
   const handEl = document.getElementById('hand');
-  handEl.innerHTML = myPlayer.hand.map(card => {
-    const disabled = !isMyTurn || !myLegal.has(card.key);
-    return `<div class="card hand-card ${suitCls(card.suit)} ${disabled ? 'disabled' : 'playable'}"
-                 role="button" tabindex="${disabled ? -1 : 0}"
-                 aria-label="${card.rank} of ${card.suit}"
-                 data-card="${card.key}">
-      <span class="c-rank">${card.rank}</span>
-      <span class="c-suit">${SUIT_CHAR[card.suit]}</span>
-    </div>`;
-  }).join('');
+  handEl.classList.toggle('guarded', guardActive);
+  if (guardActive) {
+    handEl.innerHTML = renderGuardCards(myPlayer.hand.length);
+  } else {
+    handEl.innerHTML = myPlayer.hand.map(card => {
+      const disabled = !isMyTurn || !myLegal.has(card.key);
+      return `<div class="card hand-card ${suitCls(card.suit)} ${disabled ? 'disabled' : 'playable'}"
+                   role="button" tabindex="${disabled ? -1 : 0}"
+                   aria-label="${card.rank} of ${card.suit}"
+                   data-card="${card.key}">
+        <span class="c-rank">${card.rank}</span>
+        <span class="c-suit">${SUIT_CHAR[card.suit]}</span>
+      </div>`;
+    }).join('');
 
-  handEl.querySelectorAll('[data-card]').forEach(el => {
-    const handler = () => {
-      if (el.classList.contains('disabled')) return;
-      engine.submitIntent({ type: 'play', cardKey: el.dataset.card });
-    };
-    el.addEventListener('click', handler);
-    el.addEventListener('keydown', e => {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handler(); }
+    handEl.querySelectorAll('[data-card]').forEach(el => {
+      const handler = () => {
+        if (el.classList.contains('disabled')) return;
+        engine.submitIntent({ type: 'play', cardKey: el.dataset.card });
+      };
+      el.addEventListener('click', handler);
+      el.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handler(); }
+      });
     });
-  });
+  }
+
+  if (guardEl) {
+    guardEl.classList.toggle('hidden', !guardActive);
+    if (guardActive) {
+      guardTitleEl.textContent = `Pass to ${myPlayer.name}`;
+      guardCopyEl.textContent = 'When they are ready, press Reveal cards to show this hand.';
+    }
+  }
 
   /* Skip button — glows only when usable */
   const canSkip = isMyTurn && myLegal.size === 0;
@@ -394,9 +476,8 @@ function render(state, engine) {
   }
 }
 
-function _humanSeat() {
-  if (app.mode === 'hotseat' && app.engine?.state) return app.engine.state.turn;
-  return app.localSeat;
+function _humanSeat(state = app.engine?.state) {
+  return currentVisibleSeat(state);
 }
 
 function _renderSeat(targetId, seatIdx, state, humanSeat, engine) {
@@ -427,6 +508,19 @@ skipBtn?.addEventListener('click', () => {
   app.engine?.submitIntent({ type: 'skip' });
 });
 
+guardBtn?.addEventListener('click', () => {
+  const seat = activeSharedSeat(app.engine?.state);
+  if (seat === null) return;
+  app.revealedSeat = seat;
+  if (app.engine?.state) render(app.engine.state, app.engine);
+});
+
+newRoomCodeBtn?.addEventListener('click', () => {
+  if (!roomCodeEl) return;
+  roomCodeEl.value = makeRoomCode();
+  persistCurrentConfig(roomCodeEl.value);
+});
+
 /* ═══════════════════════════════════════════
    GAME OVER OVERLAY
 ═══════════════════════════════════════════ */
@@ -445,12 +539,15 @@ function startGame(fromLobby = false) {
     app.mode   = resolveMode(lobbyCfg);
     if (roomCodeEl) roomCodeEl.value = lobbyCfg.roomCode;
     if (modeEl)     modeEl.value     = app.mode;
+    syncNameInputs(lobbyCfg.names);
   } else {
     lobbyCfg = null;
     app.mode = modeEl?.value || 'solo';
   }
 
   goOverlay?.classList.add('hidden');
+  app.guardSeat = null;
+  app.revealedSeat = null;
 
   // Destroy old engine
   app.engine?.destroy();
@@ -461,9 +558,9 @@ function startGame(fromLobby = false) {
 
   /* Build players config */
   const ctrl  = lobbyCfg ? resolveControllers(lobbyCfg) : _defaultControllers(app.mode);
-  const names = lobbyCfg ? lobbyCfg.names       : ['Player 1', 'Player 2', 'Player 3'];
+  const names = lobbyCfg ? lobbyCfg.names : getNamesFromInputs();
 
-  const isHost = app.mode === 'solo' || app.mode === 'hotseat' || app.mode === 'room-host';
+  const isHost = app.mode !== 'room-join';
   app.localSeat = isHost ? 0 : configuredLocalSeat(Array.isArray(ctrl) ? ctrl.findIndex(c => c === 'local') : 1);
   if (app.localSeat < 0) app.localSeat = 1;
 
@@ -515,6 +612,7 @@ function startGame(fromLobby = false) {
     if (setupStatusEl) {
       setupStatusEl.textContent = {
         solo:        'Solo match started.',
+        semi:        '2P vs 1 CPU started. Shared hands reveal turn by turn.',
         hotseat:     'Hotseat — pass the device each turn.',
         'room-host': `Hosting room ${rc}. Share the code with others.`,
       }[app.mode] || '';
@@ -653,6 +751,7 @@ function _handleBridgeMessage(message) {
 /* ── Default controllers when no lobby config ── */
 function _defaultControllers(mode) {
   if (mode === 'solo')      return ['local', 'ai',    'ai'];
+  if (mode === 'semi')      return ['local', 'local', 'ai'];
   if (mode === 'hotseat')   return ['local', 'local', 'local'];
   if (mode === 'room-host') return ['local', 'remote','remote'];
   if (mode === 'room-join') return ['remote','local', 'remote'];

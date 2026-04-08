@@ -250,12 +250,15 @@
           <div class="room-row" id="room-row" style="display:none">
             <div class="lobby-field">
               <label class="lobby-label" for="room-code-input">Room code</label>
-              <input class="lobby-input" id="room-code-input" placeholder="e.g. GAME-1" autocomplete="off" maxlength="24"/>
+              <div class="room-inline-actions">
+                <input class="lobby-input" id="room-code-input" placeholder="e.g. MINT-RAVEN-Q7" autocomplete="off" maxlength="24"/>
+                <button class="lobby-mini-btn" id="regen-room-code" type="button">New code</button>
+              </div>
             </div>
           </div>
           <!-- Hotseat notice -->
           <div class="hotseat-notice" id="hotseat-notice">
-            &#128073; In hotseat mode, all players share this device. Pass it around on each turn.
+            &#128073; In shared-device modes, the next hand stays hidden until that player presses Reveal.
           </div>
         </div>
       </div>
@@ -342,9 +345,24 @@ const modeList = getModes(gameCfg.players);
 
 let selectedMode = modeList[0].id;
 let roomCode = gameCfg.defaultCode;
+let draftNames = gameCfg.defaultNames.slice();
+
+const ROOM_WORDS = ['AMBER','COMET','FABLE','FJORD','LUNAR','MAPLE','NOVA','RAVEN','SOLAR','TIGER','VELVET','WILLOW'];
 
 function normalizeRoomCode(value) {
   return String(value || '').toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 24);
+}
+
+function randomTail(length = 3) {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
+
+function makeRoomCode() {
+  const first = ROOM_WORDS[Math.floor(Math.random() * ROOM_WORDS.length)];
+  let second = ROOM_WORDS[Math.floor(Math.random() * ROOM_WORDS.length)];
+  if (second === first) second = ROOM_WORDS[(ROOM_WORDS.indexOf(first) + 5) % ROOM_WORDS.length];
+  return `${first}-${second}-${randomTail(3)}`;
 }
 
 // ── Populate game identity ──
@@ -377,6 +395,7 @@ renderModes();
 // ── Room code ──
 const roomRow     = document.getElementById('room-row');
 const roomInput   = document.getElementById('room-code-input');
+const regenRoomBtn = document.getElementById('regen-room-code');
 const hotseatNote = document.getElementById('hotseat-notice');
 roomInput.value   = gameCfg.defaultCode;
 roomInput.addEventListener('input', () => {
@@ -384,11 +403,20 @@ roomInput.addEventListener('input', () => {
   roomCode = normalized || gameCfg.defaultCode;
   roomInput.value = roomCode;
 });
+regenRoomBtn?.addEventListener('click', () => {
+  roomCode = makeRoomCode();
+  roomInput.value = roomCode;
+  updateStatus();
+});
 
 function updateVisibility() {
   const isRoom = selectedMode === 'room-host' || selectedMode === 'room-join';
   roomRow.style.display    = isRoom ? 'flex' : 'none';
-  hotseatNote.classList.toggle('show', selectedMode === 'hotseat');
+  if (selectedMode === 'room-host' && (!normalizeRoomCode(roomInput.value) || normalizeRoomCode(roomInput.value) === gameCfg.defaultCode)) {
+    roomCode = makeRoomCode();
+    roomInput.value = roomCode;
+  }
+  hotseatNote.classList.toggle('show', selectedMode === 'hotseat' || selectedMode === 'semi');
   renderNames(); // controllers change with mode
   updateStatus();
 }
@@ -432,16 +460,21 @@ function controllerColor(ctrl) {
 
 function renderNames() {
   const controllers = getControllers();
+  draftNames = Array.from({ length: gameCfg.players }, (_, i) =>
+    namesGrid.querySelector(`#name-input-${i}`)?.value.trim() || draftNames[i] || gameCfg.defaultNames[i]
+  );
+  const localCount = controllers.filter(ctrl => ctrl === 'local').length;
   namesGrid.innerHTML = controllers.map((ctrl, i) => {
     const isEditable = ctrl === 'local';
     const defaultName = gameCfg.defaultNames[i];
-    // Try to restore any previously typed name
-    const stored = namesGrid.querySelector(`#name-input-${i}`)?.value || '';
-    const val = stored || defaultName;
+    const val = draftNames[i] || defaultName;
+    const badge = ctrl === 'local'
+      ? (localCount === 1 ? 'Your name' : `Player ${i + 1}`)
+      : controllerLabel(ctrl);
     return `
       <div class="name-row">
         <div class="name-avatar av${i}">${['P1','P2','P3'][i]}</div>
-        <span class="name-type-badge" style="color:${controllerColor(ctrl)}">${controllerLabel(ctrl)}</span>
+        <span class="name-type-badge" style="color:${controllerColor(ctrl)}">${badge}</span>
         <div class="lobby-field" style="flex:1">
           <input class="lobby-input" id="name-input-${i}"
             value="${val}"
@@ -462,13 +495,15 @@ const launchBtn = document.getElementById('launch-btn');
 
 function updateStatus() {
   if (selectedMode === 'room-join') {
-    statusEl.textContent = 'You will join the next open online seat in this room.';
+    statusEl.textContent = 'Set your name, then join the next open online seat in this room.';
     launchBtn.textContent = 'Join room →';
   } else if (selectedMode === 'room-host') {
-    statusEl.textContent = 'Launch the room, then share the code. Guests are assigned open seats automatically.';
+    statusEl.textContent = `Set your name, launch the room, then share ${roomCode || 'the code'}. Guests are assigned open seats automatically.`;
     launchBtn.textContent = 'Host & launch →';
   } else {
-    statusEl.textContent = '';
+    statusEl.textContent = selectedMode === 'semi'
+      ? 'Two human players share this device and the CPU takes the third seat.'
+      : 'Set player names before you launch.';
     launchBtn.textContent = 'Launch game →';
   }
 }
@@ -481,13 +516,17 @@ launchBtn.addEventListener('click', () => {
     const el = document.getElementById(`name-input-${i}`);
     return el?.value.trim() || gameCfg.defaultNames[i];
   });
+  draftNames = names.slice();
+  const preferredSeat = Math.max(0, controllers.findIndex(ctrl => ctrl === 'local'));
 
   const config = {
     game:        gameKey,
     mode:        selectedMode,
     roomCode:    normalizeRoomCode(roomInput.value) || gameCfg.defaultCode,
     names,
-    controllers
+    controllers,
+    playerName:  names[preferredSeat] || gameCfg.defaultNames[preferredSeat],
+    preferredSeat
   };
 
   // Write to sessionStorage so game JS can read it

@@ -111,10 +111,7 @@ function getLobbyConfig(gameKey, numPlayers) {
   };
 }
 
-/* Map lobby controller strings to what the game JS expects.
-   Games use: 'local', 'ai', 'remote'
-   Lobby emits same, but 'semi' mode needs special handling.
-*/
+/* Map lobby controller strings to what the game JS expects. */
 function resolveControllers(cfg) {
   if (!cfg) return [];
   if (cfg.mode === 'semi') return deriveControllers('semi', cfg.names?.length || 3, cfg.preferredSeat);
@@ -122,10 +119,8 @@ function resolveControllers(cfg) {
   return deriveControllers(cfg.mode || 'solo', cfg.names?.length || 3, cfg.preferredSeat);
 }
 
-/* Translate lobby mode to the mode string game JS uses internally */
 function resolveMode(cfg) {
-  if (cfg.mode === 'semi') return 'hotseat';
-  return cfg.mode;
+  return cfg?.mode || 'solo';
 }
 
 function persistLobbyConfig(cfg) {

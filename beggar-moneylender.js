@@ -4,17 +4,23 @@ const SUIT_CHAR = { Clubs: '♣', Diamonds: '♦', Hearts: '♥', Spades: '♠' 
 const RANKS = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
 const AVATARS = ['P1','P2'];
 
-const app = { mode: 'solo', localSeat: 0, bridge: null, state: null };
+const app = { mode: 'solo', localSeat: 0, bridge: null, state: null, guardSeat: null, revealedSeat: null };
 let lobbyCfg = null;
+const ROOM_WORDS = ['AMBER','COMET','FABLE','FJORD','LUNAR','MAPLE','NOVA','RAVEN','SOLAR','TIGER','VELVET','WILLOW'];
 
 const modeEl        = document.getElementById('mode');
 const roomCodeEl    = document.getElementById('room-code');
+const newRoomCodeBtn = document.getElementById('new-room-code');
 const setupStatusEl = document.getElementById('setup-status');
 const setupDrawer   = document.getElementById('setup-drawer');
 const toggleSetupBtn= document.getElementById('toggle-setup');
 const goOverlay     = document.getElementById('gameover-overlay');
 const goTitle       = document.getElementById('go-title');
 const goMessage     = document.getElementById('go-message');
+const guardEl       = document.getElementById('turn-guard');
+const guardTitleEl  = document.getElementById('turn-guard-title');
+const guardCopyEl   = document.getElementById('turn-guard-copy');
+const guardBtn      = document.getElementById('turn-guard-btn');
 const chatUI        = window.initGameChat ? window.initGameChat() : null;
 
 function suitClass(s) { return (s === 'Hearts' || s === 'Diamonds') ? 'red-suit' : 'black-suit'; }
@@ -24,7 +30,11 @@ function shuffle(arr) {
   return a;
 }
 function createDeck() { return SUITS.flatMap(s => RANKS.map(r => ({ suit: s, rank: r, key: `${r}-${s}` }))); }
+function randomTail(length = 3) { const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join(''); }
+function makeRoomCode() { const first = ROOM_WORDS[Math.floor(Math.random() * ROOM_WORDS.length)]; let second = ROOM_WORDS[Math.floor(Math.random() * ROOM_WORDS.length)]; if (second === first) second = ROOM_WORDS[(ROOM_WORDS.indexOf(first) + 5) % ROOM_WORDS.length]; return `${first}-${second}-${randomTail(3)}`; }
 function currentHumanSeat() { return app.mode === 'hotseat' ? app.state.turn : app.localSeat; }
+function syncTurnGuard(state = app.state) { const nextSeat = app.mode === 'hotseat' && state && !state.over ? state.turn : null; if (app.guardSeat !== nextSeat) { app.guardSeat = nextSeat; app.revealedSeat = null; } }
+function turnGuardActive(state = app.state) { return app.mode === 'hotseat' && !!state && !state.over && typeof state.turn === 'number' && app.revealedSeat !== state.turn; }
 function configuredLocalSeat(fallback = app.localSeat) {
   const preferredSeat = Number(lobbyCfg?.preferredSeat);
   if (Number.isInteger(preferredSeat)) return preferredSeat;
@@ -45,6 +55,8 @@ function currentPlayerName() {
   const fallbackSeat = configuredLocalSeat(app.localSeat);
   return app.state?.players?.[currentHumanSeat()]?.name || lobbyCfg?.playerName || lobbyCfg?.names?.[fallbackSeat] || `Player ${fallbackSeat + 1}`;
 }
+function getNamesFromInputs() { return [0, 1].map(i => document.getElementById(`name-${i}`)?.value.trim() || `Player ${i + 1}`); }
+function syncNameInputs(names) { names?.forEach((name, i) => { const input = document.getElementById(`name-${i}`); if (input) input.value = name || `Player ${i + 1}`; }); }
 
 function storedControllers() {
   if (app.mode === 'solo') return ['local', 'ai'];
@@ -61,6 +73,7 @@ function storedControllers() {
 
 function storedNames() {
   if (app.state?.players?.length) return app.state.players.map(player => player.name);
+  if (document.getElementById('name-0')) return getNamesFromInputs();
   if (lobbyCfg?.names?.length) return lobbyCfg.names.slice(0, 2);
   return ['Player 1', 'Player 2'];
 }
@@ -83,7 +96,7 @@ function initState(mode) {
     0: (mode === 'room-join') ? 'remote' : 'local',
     1: (mode === 'hotseat') ? 'local' : (mode === 'room-join') ? 'local' : (mode === 'room-host') ? 'remote' : 'ai'
   };
-  const names = lobbyCfg ? lobbyCfg.names : ['Player 1', 'Player 2'];
+  const names = lobbyCfg ? lobbyCfg.names : getNamesFromInputs();
   const players = [0, 1].map(i => ({
     name: names[i] || `Player ${i + 1}`,
     hand: [], reserve: [],
@@ -137,7 +150,9 @@ function syncIfHost() { if (app.mode === 'room-host' && app.bridge) app.bridge.b
 function render() {
   if (!app.state) return;
   const { state } = app;
+  syncTurnGuard(state);
   const seat = currentHumanSeat();
+  const guardActive = turnGuardActive(state);
   chatUI?.setContext({ mode: app.mode, roomCode: roomCodeEl?.value?.trim?.() || '', playerName: currentPlayerName() });
   document.getElementById('turn-chip').textContent = state.over ? 'Finished' : `${state.players[state.turn].name}'s turn`;
   document.getElementById('status').textContent = state.status;
@@ -154,8 +169,8 @@ function render() {
     <div class="stat-chip">${state.players[0].name}: H<strong>${state.players[0].hand.length}</strong> R<strong>${state.players[0].reserve.length}</strong></div>
     <div class="stat-chip">${state.players[1].name}: H<strong>${state.players[1].hand.length}</strong> R<strong>${state.players[1].reserve.length}</strong></div>`;
   document.getElementById('player-profile').innerHTML = `<div class="player-avatar">${AVATARS[seat]}</div><div><div class="player-name">${state.players[seat].name}</div><div class="player-sub">Hand ${state.players[seat].hand.length} | Reserve ${state.players[seat].reserve.length}</div></div>`;
-  const canAct = state.turn === seat && !state.over;
-  document.getElementById('hand-title').textContent = canAct ? 'Your Turn — Flip!' : `${state.players[state.turn].name}'s Turn`;
+  const canAct = state.turn === seat && !state.over && !guardActive;
+  document.getElementById('hand-title').textContent = guardActive ? `${state.players[seat].name} — hidden turn` : canAct ? 'Your Turn — Flip!' : `${state.players[state.turn].name}'s Turn`;
   const flipBtn = document.getElementById('flip-btn');
   flipBtn.disabled = !canAct;
   flipBtn.onclick = () => {
@@ -167,6 +182,13 @@ function render() {
   const dv = document.getElementById('deck-visual');
   dv.onclick = () => { if (canAct) flipBtn.click(); };
   dv.onkeydown = e => { if ((e.key === 'Enter' || e.key === ' ') && canAct) { e.preventDefault(); flipBtn.click(); } };
+  if (guardEl) {
+    guardEl.classList.toggle('hidden', !guardActive);
+    if (guardActive) {
+      guardTitleEl.textContent = `Pass to ${state.players[seat].name}`;
+      guardCopyEl.textContent = 'When they are ready, press Reveal turn before flipping a card.';
+    }
+  }
   const lastEl = document.getElementById('last-card-display');
   if (state.lastFlipped) {
     const { card, seat: fb } = state.lastFlipped;
@@ -194,11 +216,14 @@ function startGame(fromLobby) {
     app.mode = resolveMode(lobbyCfg);
     if (roomCodeEl) roomCodeEl.value = lobbyCfg.roomCode;
     if (modeEl) modeEl.value = app.mode;
+    syncNameInputs(lobbyCfg.names);
   } else {
     lobbyCfg = null;
     app.mode = modeEl ? modeEl.value : 'solo';
   }
   app.localSeat = app.mode === 'room-host' || app.mode === 'room-join' ? configuredLocalSeat(app.mode === 'room-host' ? 0 : 1) : 0;
+  app.guardSeat = null;
+  app.revealedSeat = null;
   goOverlay.classList.add('hidden');
   if (app.bridge) app.bridge.close();
   const rc = (roomCodeEl ? roomCodeEl.value.trim() : null) || 'BEGGAR-1';
@@ -289,6 +314,16 @@ function handleRoomMessage(message) {
 
 document.getElementById('start-btn')?.addEventListener('click', () => startGame(false));
 document.getElementById('go-restart')?.addEventListener('click', () => startGame(false));
+guardBtn?.addEventListener('click', () => {
+  if (!app.state || app.mode !== 'hotseat') return;
+  app.revealedSeat = app.state.turn;
+  render();
+});
+newRoomCodeBtn?.addEventListener('click', () => {
+  if (!roomCodeEl) return;
+  roomCodeEl.value = makeRoomCode();
+  persistCurrentConfig(roomCodeEl.value);
+});
 toggleSetupBtn?.addEventListener('click', () => {
   const isOpen = setupDrawer.classList.contains('open');
   setupDrawer.classList.toggle('open', !isOpen);
